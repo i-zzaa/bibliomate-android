@@ -15,6 +15,8 @@ import com.example.bibliomate_android.views.BookAdapter
 import retrofit2.Call
 import retrofit2.Callback
 import retrofit2.Response
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 class MainActivity : AppCompatActivity() {
 
@@ -24,6 +26,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var savedBookAdapter: BookAdapter
     private lateinit var searchBookList: MutableList<BookItem>
     private lateinit var savedBookList: MutableList<BookItem>
+    private val sharedPreferencesName = "SavedBooksPrefs"
+    private val savedBooksKey = "savedBooks"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -37,20 +41,20 @@ class MainActivity : AppCompatActivity() {
 
         searchRecyclerView = findViewById(R.id.searchResultsRecyclerView)
         searchRecyclerView.layoutManager = LinearLayoutManager(this)
-        searchBookAdapter = BookAdapter(searchBookList)
+        searchBookAdapter = BookAdapter(searchBookList) { bookItem ->
+            saveBook(bookItem)
+        }
         searchRecyclerView.adapter = searchBookAdapter
 
         savedRecyclerView = findViewById(R.id.savedBooksRecyclerView)
         savedRecyclerView.layoutManager = LinearLayoutManager(this)
-        savedBookAdapter = BookAdapter(savedBookList)
+        savedBookAdapter = BookAdapter(savedBookList) {}
         savedRecyclerView.adapter = savedBookAdapter
 
         searchButton.setOnClickListener {
             val query = searchInput.text.toString()
             if (query.isNotEmpty()) {
                 searchBooks(query)
-            } else {
-                Toast.makeText(this, "Por favor, insira um termo de busca", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -67,8 +71,6 @@ class MainActivity : AppCompatActivity() {
                         searchBookList.addAll(books)
                         searchBookAdapter.notifyDataSetChanged()
                     }
-                } else {
-                    Log.e("API_ERROR", "Erro: ${response.code()}")
                 }
             }
 
@@ -78,7 +80,30 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
+    private fun saveBook(bookItem: BookItem) {
+        if (!savedBookList.contains(bookItem)) {
+            savedBookList.add(bookItem)
+            savedBookAdapter.notifyDataSetChanged()
+            saveToAsyncStorage(savedBookList)
+        }
+    }
+
     private fun loadSavedBooks(): MutableList<BookItem> {
-        return mutableListOf()
+        val sharedPreferences = getSharedPreferences(sharedPreferencesName, MODE_PRIVATE)
+        val savedBooksJson = sharedPreferences.getString(savedBooksKey, null)
+        return if (savedBooksJson != null) {
+            val type = object : TypeToken<List<BookItem>>() {}.type
+            Gson().fromJson(savedBooksJson, type)
+        } else {
+            mutableListOf()
+        }
+    }
+
+    private fun saveToAsyncStorage(savedBooks: List<BookItem>) {
+        val sharedPreferences = getSharedPreferences(sharedPreferencesName, MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val savedBooksJson = Gson().toJson(savedBooks)
+        editor.putString(savedBooksKey, savedBooksJson)
+        editor.apply()
     }
 }

@@ -80,6 +80,5 @@ dependencies {
 
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.appcompat:appcompat:1.5.1")
-
-
+    implementation("com.google.code.gson:gson:2.8.9")
 }
